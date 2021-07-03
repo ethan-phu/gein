@@ -2,11 +2,13 @@ package main
 
 import (
 	"gee/gein"
-	"net/http"
 )
 
-func IndexFun(res http.ResponseWriter, req *http.Request) {
-	res.Write([]byte("httlowlll"))
+func IndexFun(c *gein.Context) {
+	c.JSON(200, gein.H{
+		"code": 200,
+		"msg":  "成功调度",
+	})
 }
 
 func main() {

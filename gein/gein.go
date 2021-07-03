@@ -1,28 +1,26 @@
 package gein
 
 import (
-	"fmt"
 	"net/http"
 )
 
 // HandleFunc defines the request handler used by gein
-type HandlerFunc func(http.ResponseWriter, *http.Request)
+type HandlerFunc func(c *Context)
 
 // Engin implement the interface of ServeHTTP
 type Engine struct {
-	router map[string]HandlerFunc
+	router *router
 }
 
 // new is the constructor of gein.Engine
 func New() *Engine {
 	return &Engine{
-		router: make(map[string]HandlerFunc),
+		router: newRouter(),
 	}
 }
 
 func (engin *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
-	key := method + "-" + pattern
-	engin.router[key] = handler
+	engin.router.addRoute(method, pattern, handler)
 }
 
 // GET defines the method to add GET request
@@ -37,12 +35,8 @@ func (engin *Engine) POST(pattern string, handler HandlerFunc) {
 
 // RUN defines the method to start a http server
 func (engin *Engine) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	key := req.Method + "-" + req.URL.Path
-	if handler, ok := engin.router[key]; ok {
-		handler(res, req)
-	} else {
-		fmt.Fprintf(res, "404 NOT FOUND:%s\n", req.URL)
-	}
+	c := newContext(res, req)
+	engin.router.handle(c)
 }
 func (engin *Engine) Run(addr string) (err error) {
 	return http.ListenAndServe(addr, engin)
