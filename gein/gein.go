@@ -2,6 +2,7 @@ package gein
 
 import (
 	"net/http"
+	"strings"
 )
 
 // HandleFunc defines the request handler used by gein
@@ -58,9 +59,21 @@ func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
 	group.engine.router.addRoute("POST", pattern, handler)
 }
 
+// Use is defines to add middleware to the group
+func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
+	group.middlewares = append(group.middlewares, middlewares...)
+}
+
 // RUN defines the method to start a http server
 func (engine *Engine) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	var middlewares []HandlerFunc
+	for _, group := range engine.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middlewares = append(middlewares, group.middlewares...)
+		}
+	}
 	c := newContext(res, req)
+	c.handlers = middlewares
 	engine.router.handle(c)
 }
 func (engine *Engine) Run(addr string) (err error) {
