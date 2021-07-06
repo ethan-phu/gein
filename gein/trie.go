@@ -32,6 +32,11 @@ func (n *node) matchChildren(part string) []*node {
 
 // 路由注册的重要功能主要是插入路由和查找路由了
 func (n *node) insert(pattern string, parts []string, height int) {
+	/*
+		pattern 待匹配的路由/p/:lang
+		parts [p,:lang]
+		height 高度 我们从0一直开始遍历到顶部。O(N)
+	*/
 	if len(parts) == height {
 		n.pattern = pattern
 		return
