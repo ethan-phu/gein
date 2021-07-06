@@ -6,38 +6,63 @@ import (
 
 // HandleFunc defines the request handler used by gein
 type HandlerFunc func(c *Context)
+type RouterGroup struct {
+	prefix      string
+	middlewares []HandlerFunc // support middleware
+	parent      *RouterGroup  // support nesting
+	engine      *Engine       // all groups share a Engin instance
+}
 
 // Engin implement the interface of ServeHTTP
 type Engine struct {
+	*RouterGroup
 	router *router
+	groups []*RouterGroup // store all groups
 }
 
 // new is the constructor of gein.Engine
 func New() *Engine {
-	return &Engine{
+	engine := &Engine{
 		router: newRouter(),
 	}
+	engine.RouterGroup = &RouterGroup{
+		engine: engine,
+	}
+	engine.groups = []*RouterGroup{engine.RouterGroup}
+	return engine
 }
 
-func (engin *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
-	engin.router.addRoute(method, pattern, handler)
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := group.engine
+	newGroup := &RouterGroup{
+		prefix: group.prefix + prefix,
+		parent: group,
+		engine: engine,
+	}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
+}
+
+func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
+	pattern := group.prefix + comp
+	group.engine.router.addRoute(method, pattern, handler)
 }
 
 // GET defines the method to add GET request
-func (engin *Engine) GET(pattern string, handler HandlerFunc) {
-	engin.addRoute("GET", pattern, handler)
+func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
+	group.engine.router.addRoute("GET", pattern, handler)
 }
 
 // POST defines the method to add POST request
-func (engin *Engine) POST(pattern string, handler HandlerFunc) {
-	engin.addRoute("POST", pattern, handler)
+func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
+	group.engine.router.addRoute("POST", pattern, handler)
 }
 
 // RUN defines the method to start a http server
-func (engin *Engine) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+func (engine *Engine) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	c := newContext(res, req)
-	engin.router.handle(c)
+	engine.router.handle(c)
 }
-func (engin *Engine) Run(addr string) (err error) {
-	return http.ListenAndServe(addr, engin)
+func (engine *Engine) Run(addr string) (err error) {
+	return http.ListenAndServe(addr, engine)
 }
